@@ -28,7 +28,6 @@ _DATA_LINE_RE = re.compile(
     re.IGNORECASE,
 )
 _LABEL_ONLY_RE = re.compile(r'^[A-ZÀ-Úa-zà-ú][\w\s/()-]*:$')
-
 _PROCESSO_RE = re.compile(
     r'^(Processo|CumSen|Execução|Cumprimento de Sentença|AP|Reclamação)\s*n[ºo°]?\s*',
     re.IGNORECASE,
@@ -57,7 +56,7 @@ def _set_font(run, name=None, size=None, bold=False):
 
 def _parse_bold_runs(paragraph, text: str, size=None):
     size = size or _FONTE_TAM
-    parts = re.split(r'(\*\*[^*]+\*\*)', text)
+    parts = re.split(r'(\*\*[^*]+\*\*)', text)  # ← CORRIGIDO
     for part in parts:
         if part.startswith('**') and part.endswith('**'):
             r = paragraph.add_run(part[2:-2])
@@ -76,8 +75,8 @@ def _set_doc_style(doc):
 
 def _configure_page(doc):
     sec = doc.sections[0]
-    sec.page_width    = Mm(210)   # ← A4 largura
-    sec.page_height   = Mm(297)   # ← A4 altura
+    sec.page_width    = Mm(210)
+    sec.page_height   = Mm(297)
     sec.top_margin    = Cm(2.2)
     sec.bottom_margin = Cm(2.0)
     sec.left_margin   = Cm(2.5)
@@ -92,7 +91,6 @@ def _normalize_lines(texto: str):
 
 def _strip_trailing_block(texto: str, modelo: str):
     linhas = _normalize_lines(texto)
-
     if modelo == "Parceria Marília + Eleandro":
         blocos_remover = {
             "Eleandro Soares", "OAB/RS nº 70.936",
@@ -116,16 +114,13 @@ def _strip_trailing_block(texto: str, modelo: str):
             "Bairro Centro – Porto Alegre – RS – CEP 90020-008",
             "Fone: 51.3062-8510", "noronhasoaresadv@gmail.com",
         }
-
     resultado = []
     for linha in linhas:
         if linha.strip() in blocos_remover:
             continue
         resultado.append(linha)
-
     while resultado and resultado[-1].strip() == "":
         resultado.pop()
-
     return resultado
 
 
@@ -134,7 +129,6 @@ def _split_sections(linhas):
     corpo      = []
     fechamento = []
     state      = "header"
-
     for linha in linhas:
         if state == "header":
             cabecalho.append(linha)
@@ -150,13 +144,11 @@ def _split_sections(linhas):
                 corpo.append(linha)
             continue
         fechamento.append(linha)
-
     return cabecalho, corpo, fechamento
 
 
 def _add_header(section, modelo):
     header = section.first_page_header
-
     if modelo == "Noronha":
         p = header.paragraphs[0]
         p.clear()
@@ -165,7 +157,6 @@ def _add_header(section, modelo):
             r = p.add_run()
             r.add_picture(LOGO_NORONHA, width=Cm(5.0))
         return
-
     table = header.add_table(rows=1, cols=2, width=Cm(16))
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     p_default = header.paragraphs[0]
@@ -173,17 +164,14 @@ def _add_header(section, modelo):
     p_default.paragraph_format.space_before = Pt(0)
     p_default.paragraph_format.space_after  = Pt(0)
     p_default.paragraph_format.line_spacing = Pt(1)
-
     c1 = table.cell(0, 0)
     c2 = table.cell(0, 1)
     c1.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
     c2.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-
     p1 = c1.paragraphs[0]
     p2 = c2.paragraphs[0]
     p1.alignment = WD_ALIGN_PARAGRAPH.LEFT
     p2.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-
     if os.path.exists(LOGO_PAR_ESQ):
         r = p1.add_run()
         r.add_picture(LOGO_PAR_ESQ, width=Cm(3.6))
@@ -225,27 +213,17 @@ def _add_processo(doc, linha):
 
 
 def _add_body(doc, linha, is_intro=False):
-    """
-    is_intro=True  → parágrafo de abertura (reclamante/reclamado):
-                     Noronha = bloco inteiro na régua 3 (left_indent)
-                     Parceria = só 1ª linha na régua 3 (first_line_indent)
-    is_intro=False → demais parágrafos: só 1ª linha na régua 3
-    """
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after  = Pt(0)
-    p.paragraph_format.line_spacing = 1.5
-
+    p.paragraph_format.line_spacing = 1.15
     if _MODELO == "Noronha" and is_intro:
-        # Bloco inteiro na régua 3
         p.paragraph_format.left_indent       = Cm(3.0)
         p.paragraph_format.first_line_indent = Cm(0)
     else:
-        # Só a primeira linha na régua 3
         p.paragraph_format.first_line_indent = Cm(3.0)
         p.paragraph_format.left_indent       = Cm(0)
-
     _parse_bold_runs(p, linha)
 
 
@@ -256,14 +234,13 @@ def _add_data_line(doc, linha, bold=False):
     p.paragraph_format.left_indent       = Cm(3.0)
     p.paragraph_format.space_before      = Pt(0)
     p.paragraph_format.space_after       = Pt(0)
-    p.paragraph_format.line_spacing      = 1.5
-
+    p.paragraph_format.line_spacing      = 1.15
     if ":" in linha:
         rotulo, _, valor = linha.partition(":")
         r1 = p.add_run(rotulo + ":")
-        _set_font(r1, bold=True)        # "Titular:"  → negrito
+        _set_font(r1, bold=True)
         r2 = p.add_run(valor)
-        _set_font(r2, bold=False)       # " ELEANDRO SOARES..." → normal
+        _set_font(r2, bold=False)
     else:
         r = p.add_run(linha)
         _set_font(r, bold=bold)
@@ -275,7 +252,7 @@ def _add_simple(doc, linha, bold=False):
     p.paragraph_format.first_line_indent = Cm(0)
     p.paragraph_format.space_before      = Pt(0)
     p.paragraph_format.space_after       = Pt(0)
-    p.paragraph_format.line_spacing      = 1.5
+    p.paragraph_format.line_spacing      = 1.15
     r = p.add_run(linha)
     _set_font(r, bold=bold)
 
@@ -287,7 +264,7 @@ def _add_closing(doc, linha):
     p.paragraph_format.left_indent       = Cm(0)
     p.paragraph_format.space_before      = Pt(0)
     p.paragraph_format.space_after       = Pt(0)
-    p.paragraph_format.line_spacing      = 1.5
+    p.paragraph_format.line_spacing      = 1.15
     r = p.add_run(linha)
     _set_font(r)
 
@@ -300,22 +277,17 @@ def _blank(doc, after=0):
 def _add_signatures_parceria(doc):
     from docx.oxml import OxmlElement
     _blank(doc, 6)
-
     table = doc.add_table(rows=1, cols=2)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
-
-    # Fix: força largura de 14cm + centraliza a tabela via XML
     tblPr = table._tbl.tblPr
     tblW = OxmlElement('w:tblW')
-    tblW.set(qn('w:w'), str(int(14 * 567)))  # 14cm em twips
+    tblW.set(qn('w:w'), str(int(14 * 567)))
     tblW.set(qn('w:type'), 'dxa')
     tblPr.append(tblW)
-
     left  = table.cell(0, 0)
     right = table.cell(0, 1)
     left.vertical_alignment  = WD_CELL_VERTICAL_ALIGNMENT.CENTER
     right.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-
     p1 = left.paragraphs[0]
     p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
     if os.path.exists(ASS_ELEANDRO):
@@ -326,7 +298,6 @@ def _add_signatures_parceria(doc):
         p_oab = left.add_paragraph()
         p_oab.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _set_font(p_oab.add_run("OAB/RS nº 70.936"))
-
     p2 = right.paragraphs[0]
     p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
     if os.path.exists(ASS_MARILIA):
@@ -338,13 +309,14 @@ def _add_signatures_parceria(doc):
         p_oab.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _set_font(p_oab.add_run("OAB/RS 52.535"))
 
+
 def _add_signatures_noronha(doc):
     _blank(doc, 6)
     nomes = [
-        ("Marília Chemello Faviero",          "OAB/RS 52.535"),
-        ("Geovana da Silva Freitas",          "OAB/RS nº 59.771"),
-        ("Ivandro Noronha de Freitas",        "OAB/RS nº 97.120"),
-        ("Eleandro Soares",                   "OAB/RS nº 70.936"),
+        ("Marília Chemello Faviero",   "OAB/RS 52.535"),
+        ("Geovana da Silva Freitas",   "OAB/RS nº 59.771"),
+        ("Ivandro Noronha de Freitas", "OAB/RS nº 97.120"),
+        ("Eleandro Soares",            "OAB/RS nº 70.936"),
     ]
     for nome, oab in nomes:
         p = doc.add_paragraph()
@@ -353,7 +325,6 @@ def _add_signatures_noronha(doc):
         p.paragraph_format.space_after  = Pt(0)
         r = p.add_run(nome)
         _set_font(r, bold=True)
-
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.paragraph_format.space_before = Pt(0)
@@ -371,16 +342,13 @@ def gerar_docx(
     _MODELO     = modelo
     _FONTE_NOME = "Century Gothic" if modelo == "Noronha" else "Segoe UI"
     _FONTE_TAM  = 11               if modelo == "Noronha" else 12
-
     doc = Document()
     _set_doc_style(doc)
     section = _configure_page(doc)
     _add_header(section, modelo)
     _add_footer(section, modelo)
-
     linhas = _strip_trailing_block(texto, modelo)
     cabecalho, corpo, fechamento = _split_sections(linhas)
-
     for linha in cabecalho:
         if not linha.strip():
             _blank(doc)
@@ -391,10 +359,7 @@ def gerar_docx(
             _add_processo(doc, linha)
         else:
             _add_simple(doc, linha)
-
     _blank(doc, 8)
-
-    # FIX: rastreia o primeiro parágrafo do corpo (intro com reclamante/reclamado)
     primeiro_corpo = True
     for linha in corpo:
         if not linha.strip():
@@ -404,18 +369,13 @@ def gerar_docx(
         else:
             _add_body(doc, linha, is_intro=primeiro_corpo)
             primeiro_corpo = False
-
     _blank(doc, 8)
-
-    # FIX: fechamento sem linha em branco entre "Termos em que" e "Porto Alegre"
     for linha in fechamento:
         if linha.strip():
             _add_closing(doc, linha)
-
     if modelo == "Noronha":
         _add_signatures_noronha(doc)
     else:
         _add_signatures_parceria(doc)
-
     doc.save(nome_arquivo)
     return nome_arquivo
