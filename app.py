@@ -5,15 +5,11 @@ from claude_extractor import gerar_peticao_com_claude
 
 st.set_page_config(page_title="Petições | ES & MF", layout="centered")
 
-# ── SESSION STATE ──────────────────────────────────────────────────────────────
-
 if "user" not in st.session_state:
     st.session_state.user = None
 if "session" not in st.session_state:
     st.session_state.session = None
 
-
-# ── LOGIN ──────────────────────────────────────────────────────────────────────
 
 def pagina_login():
     st.title("⚖️ Gerador de Petições")
@@ -38,16 +34,13 @@ def pagina_login():
                 st.session_state.session = response.session
                 st.success("✅ Login realizado!")
                 st.rerun()
-            except Exception:
-                st.error("❌ E-mail ou senha incorretos.")
+            except Exception as e:
+                st.error(f"❌ Erro: {e}")
 
         st.caption("Não tem conta? Entre em contato com o administrador.")
 
 
-# ── APP PRINCIPAL ──────────────────────────────────────────────────────────────
-
 def pagina_principal():
-    # Header com logout
     col1, col2 = st.columns([4, 1])
     with col1:
         st.title("⚖️ Gerador de Petições")
@@ -65,23 +58,16 @@ def pagina_principal():
 
     email_usuario = st.session_state.user.email if st.session_state.user else ""
     st.caption(f"Conectado como: {email_usuario}")
-
     st.divider()
-
-    # ── MODELO ────────────────────────────────────────────────────────────────
 
     modelo = st.radio(
         "Modelo do escritório",
         ["Parceria Marília + Eleandro", "Noronha"],
         horizontal=True,
     )
-
     st.divider()
 
-    # ── UPLOADS ───────────────────────────────────────────────────────────────
-
     st.subheader("📎 Prints do processo")
-
     uploaded_files = st.file_uploader(
         "Adicione os prints (PROMAD, PJe ou qualquer print do processo)",
         type=["png", "jpg", "jpeg"],
@@ -94,10 +80,7 @@ def pagina_principal():
         placeholder="Ex: apresentar dados bancários para o alvará / juntar documentos de rescisão...",
         height=100,
     )
-
     st.divider()
-
-    # ── GERAR ─────────────────────────────────────────────────────────────────
 
     if st.button("🧠 Gerar Petição com IA", type="primary", use_container_width=True):
         if not uploaded_files and not observacao.strip():
@@ -113,7 +96,6 @@ def pagina_principal():
                     imagens.append((f.read(), mt))
 
                 texto_gerado = gerar_peticao_com_claude(imagens, observacao, modelo)
-
                 nome = "peticao.docx"
                 gerar_docx(texto_gerado, modelo=modelo, nome_arquivo=nome)
 
@@ -127,7 +109,6 @@ def pagina_principal():
                     )
 
                 st.success("✅ Petição gerada com sucesso!")
-
                 with st.expander("👁️ Ver texto gerado"):
                     st.text(texto_gerado)
 
@@ -135,8 +116,6 @@ def pagina_principal():
                 st.error(f"❌ Erro: {e}")
                 raise e
 
-
-# ── ROTEAMENTO ─────────────────────────────────────────────────────────────────
 
 if st.session_state.user is None:
     pagina_login()
