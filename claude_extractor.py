@@ -1,15 +1,12 @@
 import anthropic
 import base64
-import re
+import os
 from datetime import date
 
-import os
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
-
 
 def _ano():
     return date.today().year
-
 
 SYSTEM_PROMPT = """Você é um advogado trabalhista experiente em Porto Alegre/RS.
 Sua tarefa é escrever petições trabalhistas completas e corretas com base em prints de processos e instruções do advogado.
@@ -29,10 +26,8 @@ Você deve escrever a petição COMPLETA e entregá-la pronta.
 FORMATO OBRIGATÓRIO DA PETIÇÃO
 ════════════════════════════════════════════
 
-A petição SEMPRE deve seguir esta estrutura:
-
 Para modelo PARCERIA (Marília + Eleandro):
-```
+
 AO JUÍZO DA {VARA} DE {COMARCA}/RS.
 
 Processo nº {NUMERO_PROCESSO}
@@ -44,10 +39,9 @@ Processo nº {NUMERO_PROCESSO}
 Termos em que pede deferimento.
 
 Porto Alegre, ___ de __________ de {ANO}.
-```
 
 Para modelo NORONHA:
-```
+
 EXCELENTÍSSIMO(A) SENHOR(A) JUIZ(A) DA {VARA} DE {COMARCA}/RS.
 
 Processo nº {NUMERO_PROCESSO}
@@ -59,7 +53,6 @@ Processo nº {NUMERO_PROCESSO}
 Termos em que pede deferimento.
 
 Porto Alegre, ___ de __________ de {ANO}.
-```
 
 ════════════════════════════════════════════
 REGRAS DE FORMATAÇÃO
@@ -72,16 +65,12 @@ REGRAS DE FORMATAÇÃO
 5. Sempre fecha com: "Termos em que pede deferimento."
 6. Depois: "Porto Alegre, ___ de __________ de {ANO}."
 7. Parágrafos separados por linha em branco
-8.Empresas: sempre adicione "S.A." com pontos ao final quando for sociedade anônima 
-  (Bradesco S.A., Banco do Brasil S.A., BANRISUL S.A. etc.)
-9.Se o nome vier sem S.A. mas for banco ou empresa conhecida como S.A., adicione.
+8. Empresas: sempre adicione "S.A." com pontos ao final quando for sociedade anônima
+9. Se o nome vier sem S.A. mas for banco ou empresa conhecida como S.A., adicione.
+
 ════════════════════════════════════════════
 COMO ESCREVER O CORPO
 ════════════════════════════════════════════
-
-O corpo começa APÓS a linha do reclamante/reclamado e termina ANTES do fechamento.
-
-Exemplos de abertura do corpo:
 
 Para dados bancários com ID:
 "Em atenção à intimação de ID {id}, a parte autora vem informar os seguintes dados bancários para fins de liberação de valores:"
@@ -103,16 +92,14 @@ Escreva todos os parágrafos necessários, um por assunto.
 DADOS BANCÁRIOS — FORMATO FIXO
 ════════════════════════════════════════════
 
-Quando a petição envolver dados bancários do escritório NORONHA, use exatamente:
-
+Escritório NORONHA:
 Titular: Noronha & Freitas Advogados
 CNPJ/CPF: 33.039.253/0001-28
 Banco: 104 (Caixa Econômica Federal)
 Agência: 1587
 Conta: 000579051229-8
 
-Quando envolver dados bancários da PARCERIA (Eleandro), use exatamente:
-
+PARCERIA (Eleandro):
 Titular: ELEANDRO SOARES SOCIEDADE INDIVIDUAL DE ADVOCACIA
 CNPJ/CPF: 56.044.560/0001-00
 Banco: 748
@@ -122,8 +109,6 @@ Conta Corrente: 07376-8
 ════════════════════════════════════════════
 DADOS ELETRÔNICOS — FORMATO FIXO
 ════════════════════════════════════════════
-
-Procuradores (sempre os mesmos):
 
 Marília Chemello Faviero
 Telefone: 51 8178-0434
@@ -152,11 +137,11 @@ def gerar_peticao_com_claude(
     imagens: list[tuple[bytes, str]],
     observacao: str = "",
     modelo_escritorio: str = "Parceria Marília + Eleandro",
+    user_email: str = "sistema",
 ) -> str:
     client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
 
     content = []
-
     for img_bytes, media_type in imagens:
         img_b64 = base64.standard_b64encode(img_bytes).decode("utf-8")
         content.append({
@@ -193,5 +178,22 @@ Lembre-se:
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": content}],
     )
+
+    # ── LOG DE USO ────────────────────────────────────────────────────────────
+    try:
+        tokens_in  = response.usage.input_tokens
+        tokens_out = response.usage.output_tokens
+        custo_usd  = (tokens_in * 15 + tokens_out * 75) / 1_000_000
+
+        from supabase_client import get_client
+        get_client().table("logs_uso").insert({
+            "user_email":        user_email,
+            "modelo_escritorio": modelo_escritorio,
+            "tokens_entrada":    tokens_in,
+            "tokens_saida":      tokens_out,
+            "custo_usd":         round(custo_usd, 6),
+        }).execute()
+    except Exception:
+        pass
 
     return response.content[0].text.strip()
