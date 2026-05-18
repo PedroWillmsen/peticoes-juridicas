@@ -95,7 +95,10 @@ def pagina_principal():
                     mt = "image/jpeg" if ext in ["jpg", "jpeg"] else f"image/{ext}"
                     imagens.append((f.read(), mt))
 
-                texto_gerado = gerar_peticao_com_claude(imagens, observacao, modelo)
+                texto_gerado = gerar_peticao_com_claude(
+    imagens, observacao, modelo,
+    user_email=st.session_state.user.email
+)
                 nome = "peticao.docx"
                 gerar_docx(texto_gerado, modelo=modelo, nome_arquivo=nome)
 
