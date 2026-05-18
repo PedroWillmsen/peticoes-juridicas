@@ -3,7 +3,8 @@ import base64
 import re
 from datetime import date
 
-CLAUDE_API_KEY = "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"
+import os
+CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
 
 
 def _ano():

@@ -1,14 +1,15 @@
 import io
 import re
+import platform
 
 import pytesseract
-
-pytesseract.pytesseract.tesseract_cmd = (
-    r'C:\Users\Comercial19\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
-)
-
 from PIL import Image
 from pypdf import PdfReader
+
+if platform.system() == "Windows":
+    pytesseract.pytesseract.tesseract_cmd = (
+        r'C:\Users\Comercial19\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
+    )
 
 try:
     from pdf2image import convert_from_bytes
