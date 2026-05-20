@@ -5,8 +5,17 @@ from datetime import date
 
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
 
+
 def _ano():
     return date.today().year
+
+
+def _data_hoje():
+    meses = ["janeiro","fevereiro","março","abril","maio","junho",
+             "julho","agosto","setembro","outubro","novembro","dezembro"]
+    hoje = date.today()
+    return f"{hoje.day} de {meses[hoje.month-1]} de {hoje.year}"
+
 
 SYSTEM_PROMPT = """Você é um advogado trabalhista experiente em Porto Alegre/RS.
 Sua tarefa é escrever petições trabalhistas completas e corretas com base em prints de processos e instruções do advogado.
@@ -38,7 +47,7 @@ Processo nº {NUMERO_PROCESSO}
 
 Termos em que pede deferimento.
 
-Porto Alegre, ___ de __________ de {ANO}.
+Porto Alegre, {DATA_HOJE}.
 
 Para modelo NORONHA:
 
@@ -52,7 +61,7 @@ Processo nº {NUMERO_PROCESSO}
 
 Termos em que pede deferimento.
 
-Porto Alegre, ___ de __________ de {ANO}.
+Porto Alegre, {DATA_HOJE}.
 
 ════════════════════════════════════════════
 REGRAS DE FORMATAÇÃO
@@ -63,7 +72,7 @@ REGRAS DE FORMATAÇÃO
 3. O processo: "Processo nº XXXXXXX-XX.XXXX.X.XX.XXXX"
 4. O ID do despacho vai no corpo, NUNCA na linha do reclamante/reclamado
 5. Sempre fecha com: "Termos em que pede deferimento."
-6. Depois: "Porto Alegre, ___ de __________ de {ANO}."
+6. Depois: "Porto Alegre, {DATA_HOJE}." — use EXATAMENTE a data fornecida no prompt
 7. Parágrafos separados por linha em branco
 8. Empresas: sempre adicione "S.A." com pontos ao final quando for sociedade anônima
 9. Se o nome vier sem S.A. mas for banco ou empresa conhecida como S.A., adicione.
@@ -153,14 +162,14 @@ def gerar_peticao_com_claude(
             },
         })
 
-    modelo_txt = "NORONHA" if modelo_escritorio == "Noronha" else "PARCERIA (Marília + Eleandro)"
-    obs_txt = f"\n\nInstrução do advogado: {observacao.strip()}" if observacao.strip() else ""
-    ano = _ano()
+    modelo_txt  = "NORONHA" if modelo_escritorio == "Noronha" else "PARCERIA (Marília + Eleandro)"
+    obs_txt     = f"\n\nInstrução do advogado: {observacao.strip()}" if observacao.strip() else ""
+    data_hoje   = _data_hoje()
 
     content.append({
         "type": "text",
         "text": f"""Modelo do escritório: {modelo_txt}
-Ano atual: {ano}{obs_txt}
+Data de hoje: {data_hoje}{obs_txt}
 
 Analise os prints acima e escreva a petição completa seguindo o formato correto para o modelo {modelo_txt}.
 
@@ -169,6 +178,7 @@ Lembre-se:
 - Identifique o ID do despacho no print do PJe
 - Escreva o corpo adequado para a situação descrita
 - Use os dados bancários corretos conforme o modelo
+- Na data final use EXATAMENTE: Porto Alegre, {data_hoje}.
 - Retorne APENAS o texto da petição, pronto para protocolar""",
     })
 
@@ -179,12 +189,11 @@ Lembre-se:
         messages=[{"role": "user", "content": content}],
     )
 
-    # ── LOG DE USO ────────────────────────────────────────────────────────────
+    # ── LOG DE USO ─────────────────────────────────────────────────────────
     try:
         tokens_in  = response.usage.input_tokens
         tokens_out = response.usage.output_tokens
         custo_usd  = (tokens_in * 15 + tokens_out * 75) / 1_000_000
-
         from supabase_client import get_client
         get_client().table("logs_uso").insert({
             "user_email":        user_email,
