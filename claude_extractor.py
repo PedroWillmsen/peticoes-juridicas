@@ -188,12 +188,8 @@ Lembre-se:
     texto = response.content[0].text.strip()
 
     # ── SUBSTITUI DATA AUTOMATICAMENTE ────────────────────────────────────
-    texto = re.sub(
-        r'Porto Alegre,.*?de \d{4}\.?',
-        f'Porto Alegre, {data_hoje}.',
-        texto
-    )
     texto = texto.replace("DATA_SERA_PREENCHIDA_AUTOMATICAMENTE", data_hoje)
+    texto = re.sub(r'Porto Alegre,[^\n]+', f'Porto Alegre, {data_hoje}.', texto)
 
     # ── LOG DE USO ─────────────────────────────────────────────────────────
     try:
