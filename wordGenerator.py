@@ -1,12 +1,10 @@
 import os
 import re
-
 from docx import Document
 from docx.shared import Pt, Cm, Mm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT, WD_CELL_VERTICAL_ALIGNMENT
 from docx.oxml.ns import qn
-
 from constants import (
     NORONHA_RODAPE,
     PARCERIA_RODAPE,
@@ -56,7 +54,7 @@ def _set_font(run, name=None, size=None, bold=False):
 
 def _parse_bold_runs(paragraph, text: str, size=None):
     size = size or _FONTE_TAM
-    parts = re.split(r'(\*\*[^*]+\*\*)', text)  # ← CORRIGIDO
+    parts = re.split(r'(\*\*[^*]+\*\*)', text)
     for part in parts:
         if part.startswith('**') and part.endswith('**'):
             r = paragraph.add_run(part[2:-2])
@@ -215,15 +213,11 @@ def _add_processo(doc, linha):
 def _add_body(doc, linha, is_intro=False):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after  = Pt(0)
-    p.paragraph_format.line_spacing = 1.15
-    if _MODELO == "Noronha" and is_intro:
-        p.paragraph_format.left_indent       = Cm(3.0)
-        p.paragraph_format.first_line_indent = Cm(0)
-    else:
-        p.paragraph_format.first_line_indent = Cm(3.0)
-        p.paragraph_format.left_indent       = Cm(0)
+    p.paragraph_format.space_before      = Pt(0)
+    p.paragraph_format.space_after       = Pt(0)
+    p.paragraph_format.line_spacing      = 1.15
+    p.paragraph_format.first_line_indent = Cm(3.0)
+    p.paragraph_format.left_indent       = Cm(0)
     _parse_bold_runs(p, linha)
 
 
@@ -312,12 +306,16 @@ def _add_signatures_parceria(doc):
 
 def _add_signatures_noronha(doc):
     _blank(doc, 6)
+    _blank(doc, 6)
+    _blank(doc, 6)
+
     nomes = [
         ("Marília Chemello Faviero",   "OAB/RS 52.535"),
         ("Geovana da Silva Freitas",   "OAB/RS nº 59.771"),
         ("Ivandro Noronha de Freitas", "OAB/RS nº 97.120"),
         ("Eleandro Soares",            "OAB/RS nº 70.936"),
     ]
+
     for nome, oab in nomes:
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -325,10 +323,11 @@ def _add_signatures_noronha(doc):
         p.paragraph_format.space_after  = Pt(0)
         r = p.add_run(nome)
         _set_font(r, bold=True)
+
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.paragraph_format.space_before = Pt(0)
-        p.paragraph_format.space_after  = Pt(6)
+        p.paragraph_format.space_after  = Pt(10)
         r = p.add_run(oab)
         _set_font(r)
 
@@ -342,13 +341,16 @@ def gerar_docx(
     _MODELO     = modelo
     _FONTE_NOME = "Century Gothic" if modelo == "Noronha" else "Segoe UI"
     _FONTE_TAM  = 11               if modelo == "Noronha" else 12
+
     doc = Document()
     _set_doc_style(doc)
     section = _configure_page(doc)
     _add_header(section, modelo)
     _add_footer(section, modelo)
+
     linhas = _strip_trailing_block(texto, modelo)
     cabecalho, corpo, fechamento = _split_sections(linhas)
+
     for linha in cabecalho:
         if not linha.strip():
             _blank(doc)
@@ -359,7 +361,9 @@ def gerar_docx(
             _add_processo(doc, linha)
         else:
             _add_simple(doc, linha)
+
     _blank(doc, 8)
+
     primeiro_corpo = True
     for linha in corpo:
         if not linha.strip():
@@ -369,13 +373,17 @@ def gerar_docx(
         else:
             _add_body(doc, linha, is_intro=primeiro_corpo)
             primeiro_corpo = False
+
     _blank(doc, 8)
+
     for linha in fechamento:
         if linha.strip():
             _add_closing(doc, linha)
+
     if modelo == "Noronha":
         _add_signatures_noronha(doc)
     else:
         _add_signatures_parceria(doc)
+
     doc.save(nome_arquivo)
     return nome_arquivo
