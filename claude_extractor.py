@@ -1,13 +1,10 @@
 import anthropic
 import base64
 import os
+import re
 from datetime import date
 
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
-
-
-def _ano():
-    return date.today().year
 
 
 def _data_hoje():
@@ -47,7 +44,7 @@ Processo nº {NUMERO_PROCESSO}
 
 Termos em que pede deferimento.
 
-Porto Alegre, {DATA_HOJE}.
+Porto Alegre, DATA_SERA_PREENCHIDA_AUTOMATICAMENTE.
 
 Para modelo NORONHA:
 
@@ -61,7 +58,7 @@ Processo nº {NUMERO_PROCESSO}
 
 Termos em que pede deferimento.
 
-Porto Alegre, {DATA_HOJE}.
+Porto Alegre, DATA_SERA_PREENCHIDA_AUTOMATICAMENTE.
 
 ════════════════════════════════════════════
 REGRAS DE FORMATAÇÃO
@@ -72,7 +69,7 @@ REGRAS DE FORMATAÇÃO
 3. O processo: "Processo nº XXXXXXX-XX.XXXX.X.XX.XXXX"
 4. O ID do despacho vai no corpo, NUNCA na linha do reclamante/reclamado
 5. Sempre fecha com: "Termos em que pede deferimento."
-6. Depois: "Porto Alegre, {DATA_HOJE}." — use EXATAMENTE a data fornecida no prompt
+6. Depois: "Porto Alegre, DATA_SERA_PREENCHIDA_AUTOMATICAMENTE."
 7. Parágrafos separados por linha em branco
 8. Empresas: sempre adicione "S.A." com pontos ao final quando for sociedade anônima
 9. Se o nome vier sem S.A. mas for banco ou empresa conhecida como S.A., adicione.
@@ -162,14 +159,13 @@ def gerar_peticao_com_claude(
             },
         })
 
-    modelo_txt  = "NORONHA" if modelo_escritorio == "Noronha" else "PARCERIA (Marília + Eleandro)"
-    obs_txt     = f"\n\nInstrução do advogado: {observacao.strip()}" if observacao.strip() else ""
-    data_hoje   = _data_hoje()
+    modelo_txt = "NORONHA" if modelo_escritorio == "Noronha" else "PARCERIA (Marília + Eleandro)"
+    obs_txt    = f"\n\nInstrução do advogado: {observacao.strip()}" if observacao.strip() else ""
+    data_hoje  = _data_hoje()
 
     content.append({
         "type": "text",
-        "text": f"""Modelo do escritório: {modelo_txt}
-Data de hoje: {data_hoje}{obs_txt}
+        "text": f"""Modelo do escritório: {modelo_txt}{obs_txt}
 
 Analise os prints acima e escreva a petição completa seguindo o formato correto para o modelo {modelo_txt}.
 
@@ -178,7 +174,7 @@ Lembre-se:
 - Identifique o ID do despacho no print do PJe
 - Escreva o corpo adequado para a situação descrita
 - Use os dados bancários corretos conforme o modelo
-- Na data final use EXATAMENTE: Porto Alegre, {data_hoje}.
+- Na linha da data escreva EXATAMENTE: Porto Alegre, DATA_SERA_PREENCHIDA_AUTOMATICAMENTE.
 - Retorne APENAS o texto da petição, pronto para protocolar""",
     })
 
@@ -188,6 +184,16 @@ Lembre-se:
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": content}],
     )
+
+    texto = response.content[0].text.strip()
+
+    # ── SUBSTITUI DATA AUTOMATICAMENTE ────────────────────────────────────
+    texto = re.sub(
+        r'Porto Alegre,.*?de \d{4}\.?',
+        f'Porto Alegre, {data_hoje}.',
+        texto
+    )
+    texto = texto.replace("DATA_SERA_PREENCHIDA_AUTOMATICAMENTE", data_hoje)
 
     # ── LOG DE USO ─────────────────────────────────────────────────────────
     try:
@@ -205,4 +211,4 @@ Lembre-se:
     except Exception:
         pass
 
-    return response.content[0].text.strip()
+    return texto
