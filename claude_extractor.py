@@ -143,7 +143,6 @@ def gerar_peticao_com_claude(
     imagens: list[tuple[bytes, str]],
     observacao: str = "",
     modelo_escritorio: str = "Parceria Marília + Eleandro",
-    user_email: str = "sistema",
 ) -> str:
     client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
 
@@ -190,21 +189,5 @@ Lembre-se:
     # ── SUBSTITUI DATA AUTOMATICAMENTE ────────────────────────────────────
     texto = texto.replace("DATA_SERA_PREENCHIDA_AUTOMATICAMENTE", data_hoje)
     texto = re.sub(r'Porto Alegre,[^\n]+', f'Porto Alegre, {data_hoje}.', texto)
-
-    # ── LOG DE USO ─────────────────────────────────────────────────────────
-    try:
-        tokens_in  = response.usage.input_tokens
-        tokens_out = response.usage.output_tokens
-        custo_usd  = (tokens_in * 15 + tokens_out * 75) / 1_000_000
-        from supabase_client import get_client
-        get_client().table("logs_uso").insert({
-            "user_email":        user_email,
-            "modelo_escritorio": modelo_escritorio,
-            "tokens_entrada":    tokens_in,
-            "tokens_saida":      tokens_out,
-            "custo_usd":         round(custo_usd, 6),
-        }).execute()
-    except Exception:
-        pass
 
     return texto
