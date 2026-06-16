@@ -1,10 +1,10 @@
 import anthropic
 import base64
-import os
 import re
+import streamlit as st
 from datetime import date
 
-CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
+CLAUDE_API_KEY = st.secrets.get("CLAUDE_API_KEY", "")
 
 
 def _data_hoje():
